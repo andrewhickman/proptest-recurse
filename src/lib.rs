@@ -31,7 +31,7 @@
 //! #
 //! # use proptest::collection::vec;
 //! # use proptest::prelude::*;
-//! # use proptest::strategy::{BoxedStrategy, Just};
+//! # use proptest::strategy::{SBoxedStrategy, Just};
 //! #
 //! # #[derive(Clone, Debug)]
 //! # enum First {
@@ -47,21 +47,21 @@
 //! #
 //! use proptest_recurse::{StrategySet, StrategyExt};
 //!
-//! fn arb_first(set: &mut StrategySet) -> BoxedStrategy<First> {
+//! fn arb_first(set: &mut StrategySet) -> SBoxedStrategy<First> {
 //!     Just(First::Zero).prop_mutually_recursive(5, 32, 8, set, |set| {
 //!         vec(set.get::<Second, _>(arb_second), 0..8)
 //!             .prop_map(First::Second)
-//!             .boxed()
+//!             .sboxed()
 //!     })
 //! }
 //!
-//! fn arb_second(set: &mut StrategySet) -> BoxedStrategy<Second> {
+//! fn arb_second(set: &mut StrategySet) -> SBoxedStrategy<Second> {
 //!     Just(Second::Zero)
 //!         .prop_mutually_recursive(3, 32, 1, set, |set| {
 //!             set.get::<First, _>(arb_first)
 //!                 .prop_map(Second::First)
-//!                 .boxed()
-//!         }).boxed()
+//!                 .sboxed()
+//!         }).sboxed()
 //! }
 //! #
 //! # fn main() {}
@@ -74,7 +74,7 @@
 //! #
 //! # use proptest::collection::vec;
 //! # use proptest::prelude::*;
-//! # use proptest::strategy::{BoxedStrategy, Just};
+//! # use proptest::strategy::{SBoxedStrategy, Just};
 //! #  
 //! # use proptest_recurse::{StrategySet, StrategyExt};
 //! #
@@ -91,21 +91,21 @@
 //! # }
 //! #
 //! #
-//! # fn arb_first(set: &mut StrategySet) -> BoxedStrategy<First> {
+//! # fn arb_first(set: &mut StrategySet) -> SBoxedStrategy<First> {
 //! #     Just(First::Zero).prop_mutually_recursive(5, 32, 8, set, |set| {
 //! #         vec(set.get::<Second, _>(arb_second), 0..8)
 //! #             .prop_map(First::Second)
-//! #             .boxed()
+//! #             .sboxed()
 //! #     })
 //! # }
 //! #
-//! # fn arb_second(set: &mut StrategySet) -> BoxedStrategy<Second> {
+//! # fn arb_second(set: &mut StrategySet) -> SBoxedStrategy<Second> {
 //! #     Just(Second::Zero)
 //! #         .prop_mutually_recursive(3, 32, 1, set, |set| {
 //! #             set.get::<First, _>(arb_first)
 //! #                 .prop_map(Second::First)
-//! #                 .boxed()
-//! #         }).boxed()
+//! #                 .sboxed()
+//! #         }).sboxed()
 //! # }
 //! #
 //! # fn main() {}
@@ -117,33 +117,38 @@
 //! ```
 
 extern crate im;
+#[macro_use]
 extern crate proptest;
+
+mod recursive;
 
 use std::any::{Any, TypeId};
 use std::sync::Arc;
 
 use im::HashMap;
-use proptest::strategy::{BoxedStrategy, Strategy};
+use proptest::strategy::{SBoxedStrategy, Strategy};
+
+use recursive::Recursive;
 
 /// A collection of strategies that depend on each other. This type is cheap to clone.
 #[derive(Clone, Default, Debug)]
 pub struct StrategySet {
-    inner: HashMap<TypeId, Arc<Any>>,
+    inner: HashMap<TypeId, Arc<Any + Send + Sync>>,
 }
 
 impl StrategySet {
     /// Returns a strategy for `T`. If a strategy does not exist, it is created and inserted using
     /// `f`.
-    pub fn get<T, F>(&mut self, f: F) -> BoxedStrategy<T>
+    pub fn get<T, F>(&mut self, f: F) -> SBoxedStrategy<T>
     where
         T: Any,
-        F: FnOnce(&mut Self) -> BoxedStrategy<T>,
+        F: FnOnce(&mut Self) -> SBoxedStrategy<T>,
     {
         let mut this = self.clone();
         self.inner
             .entry(TypeId::of::<T>())
             .or_insert_with(|| Arc::new(f(&mut this)))
-            .downcast_ref::<BoxedStrategy<T>>()
+            .downcast_ref::<SBoxedStrategy<T>>()
             .unwrap()
             .clone()
     }
@@ -162,13 +167,13 @@ pub trait StrategyExt: Strategy {
         expected_branch_size: u32,
         set: &StrategySet,
         recurse: F,
-    ) -> BoxedStrategy<Self::Value>
+    ) -> SBoxedStrategy<Self::Value>
     where
         Self::Value: Any,
-        F: Fn(&mut StrategySet) -> BoxedStrategy<Self::Value> + 'static;
+        F: Fn(&mut StrategySet) -> SBoxedStrategy<Self::Value> + Send + Sync + 'static;
 }
 
-impl<T: Strategy + 'static> StrategyExt for T {
+impl<T: Strategy + Send + Sync + 'static> StrategyExt for T {
     fn prop_mutually_recursive<F>(
         self,
         depth: u32,
@@ -176,16 +181,31 @@ impl<T: Strategy + 'static> StrategyExt for T {
         expected_branch_size: u32,
         set: &StrategySet,
         branch: F,
-    ) -> BoxedStrategy<Self::Value>
+    ) -> SBoxedStrategy<Self::Value>
     where
         Self::Value: Any,
-        F: Fn(&mut StrategySet) -> BoxedStrategy<Self::Value> + 'static,
+        F: Fn(&mut StrategySet) -> SBoxedStrategy<Self::Value> + Send + Sync + 'static,
     {
         let set = set.inner.clone();
-        self.prop_recursive(depth, desired_size, expected_branch_size, move |nested| {
-            branch(&mut StrategySet {
-                inner: set.update(TypeId::of::<Self::Value>(), Arc::new(nested)),
-            })
-        }).boxed()
+        Recursive::new(
+            self.sboxed(),
+            depth,
+            desired_size,
+            expected_branch_size,
+            move |nested| {
+                branch(&mut StrategySet {
+                    inner: set.update(TypeId::of::<Self::Value>(), Arc::new(nested)),
+                })
+            },
+        ).sboxed()
     }
+}
+
+#[test]
+fn strategy_set_send_sync() {
+    fn send<T: Send>() {}
+    fn sync<T: Sync>() {}
+
+    send::<StrategySet>();
+    sync::<StrategySet>();
 }

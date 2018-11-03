@@ -4,7 +4,7 @@ extern crate proptest_recurse;
 
 use proptest::collection::vec;
 use proptest::prelude::*;
-use proptest::strategy::{BoxedStrategy, Just};
+use proptest::strategy::{Just, SBoxedStrategy};
 
 use proptest_recurse::{StrategyExt, StrategySet};
 
@@ -41,21 +41,21 @@ impl Second {
     }
 }
 
-fn arb_first(set: &mut StrategySet) -> BoxedStrategy<First> {
+fn arb_first(set: &mut StrategySet) -> SBoxedStrategy<First> {
     Just(First::Zero).prop_mutually_recursive(5, 32, 8, set, |set| {
         vec(set.get::<Second, _>(arb_second), 0..8)
             .prop_map(First::Second)
-            .boxed()
+            .sboxed()
     })
 }
 
-fn arb_second(set: &mut StrategySet) -> BoxedStrategy<Second> {
+fn arb_second(set: &mut StrategySet) -> SBoxedStrategy<Second> {
     Just(Second::Zero)
         .prop_mutually_recursive(3, 32, 1, set, |set| {
             set.get::<First, _>(arb_first)
                 .prop_map(Second::First)
-                .boxed()
-        }).boxed()
+                .sboxed()
+        }).sboxed()
 }
 
 proptest! {
