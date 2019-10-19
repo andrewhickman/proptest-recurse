@@ -10,7 +10,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-proptest = "0.8.6"
-im = "~12"
+proptest = "0.9.4"
+im = "~13"
 
 [dev-dependencies]

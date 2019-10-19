@@ -1,6 +1,6 @@
 use proptest::collection::vec;
-use proptest::{prelude::*, proptest, proptest_helper};
 use proptest::strategy::{Just, SBoxedStrategy};
+use proptest::{prelude::*, proptest};
 
 use proptest_recurse::{StrategyExt, StrategySet};
 
@@ -51,7 +51,8 @@ fn arb_second(set: &mut StrategySet) -> SBoxedStrategy<Second> {
             set.get::<First, _>(arb_first)
                 .prop_map(Second::First)
                 .sboxed()
-        }).sboxed()
+        })
+        .sboxed()
 }
 
 proptest! {

@@ -65,7 +65,7 @@
 //! To use these strategies, simply pass in an empty `StrategySet`
 //! ```no_run
 //! # use proptest::collection::vec;
-//! # use proptest::{prelude::*, proptest, proptest_helper};
+//! # use proptest::{prelude::*, proptest};
 //! # use proptest::strategy::{SBoxedStrategy, Just};
 //! #  
 //! # use proptest_recurse::{StrategySet, StrategyExt};
@@ -185,7 +185,8 @@ impl<T: Strategy + Send + Sync + 'static> StrategyExt for T {
                     inner: set.update(TypeId::of::<Self::Value>(), Arc::new(nested)),
                 })
             },
-        ).sboxed()
+        )
+        .sboxed()
     }
 }
 
