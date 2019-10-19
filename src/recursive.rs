@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use proptest::prelude::*;
+use proptest::{prelude::*, prop_oneof};
 use proptest::strategy::{float_to_weight, NewTree, ValueTree};
 use proptest::test_runner::*;
 

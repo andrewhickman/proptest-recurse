@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate proptest;
-extern crate proptest_recurse;
-
 use proptest::collection::vec;
-use proptest::prelude::*;
+use proptest::{prelude::*, proptest, proptest_helper};
 use proptest::strategy::{Just, SBoxedStrategy};
 
 use proptest_recurse::{StrategyExt, StrategySet};

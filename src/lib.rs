@@ -25,10 +25,6 @@
 //! ```
 //! We can define strategies for each using a `StrategySet`
 //! ```no_run
-//! # #[macro_use]
-//! # extern crate proptest;
-//! # extern crate proptest_recurse;
-//! #
 //! # use proptest::collection::vec;
 //! # use proptest::prelude::*;
 //! # use proptest::strategy::{SBoxedStrategy, Just};
@@ -68,12 +64,8 @@
 //! ```
 //! To use these strategies, simply pass in an empty `StrategySet`
 //! ```no_run
-//! # #[macro_use]
-//! # extern crate proptest;
-//! # extern crate proptest_recurse;
-//! #
 //! # use proptest::collection::vec;
-//! # use proptest::prelude::*;
+//! # use proptest::{prelude::*, proptest, proptest_helper};
 //! # use proptest::strategy::{SBoxedStrategy, Just};
 //! #  
 //! # use proptest_recurse::{StrategySet, StrategyExt};
@@ -116,10 +108,6 @@
 //! }
 //! ```
 
-extern crate im;
-#[macro_use]
-extern crate proptest;
-
 mod recursive;
 
 use std::any::{Any, TypeId};
@@ -128,12 +116,12 @@ use std::sync::Arc;
 use im::HashMap;
 use proptest::strategy::{SBoxedStrategy, Strategy};
 
-use recursive::Recursive;
+use crate::recursive::Recursive;
 
 /// A collection of strategies that depend on each other. This type is cheap to clone.
 #[derive(Clone, Default, Debug)]
 pub struct StrategySet {
-    inner: HashMap<TypeId, Arc<Any + Send + Sync>>,
+    inner: HashMap<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
 impl StrategySet {

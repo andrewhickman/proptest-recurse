@@ -7,6 +7,7 @@ repository = "https://github.com/andrewhickman/proptest-recurse"
 documentation = "https://docs.rs/proptest-recurse"
 license = "MIT/Apache-2.0"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
 proptest = "0.8.6"
