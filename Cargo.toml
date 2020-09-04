@@ -1,7 +1,7 @@
 [package]
 name = "proptest-recurse"
 description = "Helper for defining mutually recursive strategies with proptest."
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/proptest-recurse"
 documentation = "https://docs.rs/proptest-recurse"
@@ -10,7 +10,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-proptest = "0.9.4"
-im = "~13"
+proptest = "0.10.1"
+im = "~15"
 
 [dev-dependencies]
